@@ -1,0 +1,64 @@
+# Docker Compose file for the URLshortening-distributed-system
+
+version: "3.8"
+
+services:
+  # Cache service
+  memcached:
+    container_name: memcachedcontainer
+    image: memcached:latest
+    ports:
+      - "11211:11211" # Mapping port 11211 of the host to port 11211 of the container
+    networks:
+      - mynetwork
+
+  # MongoDB service
+  mongodb:
+    container_name: mongodbcontainer
+    image: mongo:latest
+    ports:
+      - "27017:27017" # Mapping port 27017 of the host to port 27017 of the container
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: password
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - mynetwork
+
+  # Server service
+  server:
+    container_name: servercontainer
+    build:
+      context: ./server # Path to the directory containing the Dockerfile
+      dockerfile: Dockerfile # Name of the Dockerfile
+    ports:
+      - "8000:8000" # Mapping port 8000 of the host to port 8000 of the container
+    env_file:
+      - ./server/.env # Map container port to host port
+    depends_on:
+      - memcached # Ensure memcached service is started before the server
+      - mongodb # Ensure mongodb service is started before the server
+    networks:
+      - mynetwork
+
+  # Client service
+  client:
+    container_name: clientcontainer
+    build:
+      context: ./client # Path to the directory containing the Dockerfile
+      dockerfile: Dockerfile # Name of the Dockerfile
+    ports:
+      - "3000:3000" # Mapping port 3000 of the host to port 3000 of the container
+    depends_on:
+      - server # Ensure server service is started before the client
+    networks:
+      - mynetwork
+
+networks:
+  mynetwork:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+
